@@ -12,19 +12,20 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 builder.Services.AddCors(options =>
 {
     options.AddPolicy(corsOriginsPolicy, policy =>
-    {
-        policy.WithHeaders(headers);
-        policy.WithOrigins(allowedOrigins);
-        //policy.AllowAnyHeader();
+    { 
+        policy
+            .WithOrigins(allowedOrigins)
+            .WithHeaders(headers); 
     });
 });
 
 var app = builder.Build();
 
+app.UseRouting();
 app.UseCors(corsOriginsPolicy);
 
-var todosApi = app.MapGroup("/chat");
-todosApi.MapGet("/", () => "Hello, this is your wander wallet travel buddy. How can I help you today?");
+var chatApi = app.MapGroup("/chat");
+chatApi.MapGet("/", () => "Hello, this is your wander wallet travel buddy. How can I help you today?");
 app.Run();
 
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
