@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 var builder = WebApplication.CreateSlimBuilder(args);
 var corsOriginsPolicy = "WanderWalletCorsOriginsPolicy";
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
+var headers = new string[] { "Origin", "Content-Length", "Content-Type", "Authorization", "Access-Control-Allow-Origin" };
 
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -13,6 +14,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy(corsOriginsPolicy, policy =>
     {
         policy.WithOrigins(allowedOrigins);
+        policy.WithHeaders(headers);
     });
 });
 
