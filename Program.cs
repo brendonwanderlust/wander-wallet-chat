@@ -16,6 +16,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins)
               .WithHeaders(headers)
               .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+              .WithExposedHeaders("Content-Length") 
               .AllowCredentials();
     });
 });
