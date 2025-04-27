@@ -14,7 +14,8 @@ builder.Services.AddCors(options =>
     options.AddDefaultPolicy(policy =>
     {
         policy.WithOrigins(allowedOrigins);
-        policy.WithHeaders(headers);  
+        policy.WithHeaders(headers);
+        policy.WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
     });
 });
 
@@ -25,6 +26,7 @@ app.UseCors();
 
 var chatApi = app.MapGroup("/chat");
 chatApi.MapGet("/", () => "Hello, this is your wander wallet travel buddy. How can I help you today?");
+
 app.Run();
 
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
