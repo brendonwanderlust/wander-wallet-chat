@@ -13,9 +13,10 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.WithOrigins(allowedOrigins);
-        policy.WithHeaders(headers);
-        policy.WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
+        policy.WithOrigins(allowedOrigins)
+              .WithHeaders(headers)
+              .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+              .AllowCredentials();
     });
 });
 
