@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Cors.Infrastructure;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 var corsOriginsPolicy = "WanderWalletCorsOriginsPolicy";
