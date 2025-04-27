@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.13.35919.96 d17.13
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "wander-wallet-chat", "wander-wallet-chat.csproj", "{EB6A0F56-D19B-47A8-A734-8AE3D0EB1F3C}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EB6A0F56-D19B-47A8-A734-8AE3D0EB1F3C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EB6A0F56-D19B-47A8-A734-8AE3D0EB1F3C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EB6A0F56-D19B-47A8-A734-8AE3D0EB1F3C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EB6A0F56-D19B-47A8-A734-8AE3D0EB1F3C}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {02A6E9AF-32B7-4B25-BBB8-C53DA97C3C9C}
+	EndGlobalSection
+EndGlobal
