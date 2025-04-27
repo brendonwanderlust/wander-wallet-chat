@@ -30,7 +30,7 @@ app.UseRouting();
 var rootApi = app.MapGroup("/");
 rootApi.MapGet("", () => "Hello, this is your wander wallet travel buddy. How can I help you today?");
 var chatApi = app.MapGroup("/chat");
-chatApi.MapGet("", () => "Hello, this is your wander wallet travel buddy. How can I help you today?");
+chatApi.MapGet("", () => "Hello, this is your wander wallet travel buddy. How can I help you today?").RequireCors();
 
 app.Run();
 
