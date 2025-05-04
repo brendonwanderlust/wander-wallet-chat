@@ -1,14 +1,19 @@
 using System.Text.Json.Serialization;
 using DotNetEnv;
+using Microsoft.AspNetCore.Mvc;
 using wander_wallet_chat;
 
 var builder = WebApplication.CreateSlimBuilder(args); 
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
-var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" }; 
+var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" };
 
+builder.Services.AddSingleton<ChatService>();
+builder.Services.AddSingleton<ChatHandler>();
+
+//// Configure JSON for AOT + camelCase + metadata
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
+    options.SerializerOptions.TypeInfoResolver = AppJsonSerializerContext.Default;
 });
 
 builder.Services.AddCors(options =>
@@ -30,7 +35,7 @@ builder.Services.AddCors(options =>
               .AllowCredentials()
               .SetPreflightMaxAge(TimeSpan.FromSeconds(3600));
     });
-}); 
+});
 
 var app = builder.Build();
 
@@ -44,13 +49,18 @@ if (builder.Environment.IsDevelopment())
 }
 
 var chatApi = app.MapGroup("/chat");
-chatApi.MapGet("/", async (string message) =>{
-    var chatService = new ChatService();
-    var handler = new ChatHandler(chatService);
-    return await handler.Chat(message);
+chatApi.MapGet("/", async ([FromQuery] string message, ChatHandler handler) =>
+{
+    var reply = await handler.Chat(message);
+    return Results.Ok(reply);
 });
 
-chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContext context) => {
+
+chatApi.MapGet("/stream", async ([FromQuery] string message, ChatHandler handler, HttpContext context) => { 
+    context.Response.Headers.Append("Content-Type", "text/event-stream");
+    context.Response.Headers.Append("Cache-Control", "no-cache");
+    context.Response.Headers.Append("Connection", "keep-alive");
+
     try
     {
         await foreach (var chunk in handler.ChatStreaming(message))
@@ -70,11 +80,17 @@ chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContex
 }).RequireCors("SSE");
 
 app.Run();
+public record ReplyResponse(string Reply);
 
-public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
-
-[JsonSerializable(typeof(Todo[]))]
+[JsonSourceGenerationOptions(
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+)]
+[JsonSerializable(typeof(ReplyResponse))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
-{
+{ 
 
 }
+
+
+
