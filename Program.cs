@@ -29,9 +29,9 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("SSE", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
-              .WithHeaders(headers)
+        policy.WithOrigins(allowedOrigins) 
               .WithMethods("GET", "POST", "OPTIONS")
+              .AllowAnyHeader()
               .AllowCredentials()
               .SetPreflightMaxAge(TimeSpan.FromSeconds(3600));
     });
