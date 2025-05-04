@@ -63,12 +63,6 @@ chatApi.MapGet("/stream", async (
     ChatHandler handler,
     HttpContext context) =>
 {
-    //var origin = context.Request.Headers.Origin;
-    //Console.WriteLine(origin);
-    //if (!string.IsNullOrEmpty(origin) && allowedOrigins.Any(o => o == origin))
-    //{
-    //    context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
-    //}
     context.Response.Headers.Append("Content-Type", "text/event-stream");
     context.Response.Headers.Append("Cache-Control", "no-cache");
     context.Response.Headers.Append("Connection", "keep-alive");
