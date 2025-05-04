@@ -16,6 +16,10 @@
 # Mono auto generated files
 mono_crash.*
 
+# Ignore environment files
+.env
+*.env
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

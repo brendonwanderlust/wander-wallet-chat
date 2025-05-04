@@ -1,4 +1,6 @@
 using System.Text.Json.Serialization;
+using DotNetEnv;
+using wander_wallet_chat;
 
 var builder = WebApplication.CreateSlimBuilder(args); 
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
@@ -19,7 +21,7 @@ builder.Services.AddCors(options =>
               .WithExposedHeaders("Content-Length") 
               .AllowCredentials();
     });
-});
+}); 
 
 var app = builder.Build();
 
@@ -27,8 +29,17 @@ app.UseCors();
 
 app.UseRouting();
 
+if (builder.Environment.IsDevelopment())
+{
+    Env.Load();
+}
+
 var chatApi = app.MapGroup("/chat");
-chatApi.MapGet("/", () => "Hello, this is your wander wallet travel buddy. How can I help you today?");
+chatApi.MapGet("/", async (string message) =>{
+    var chatService = new ChatService();
+    var handler = new ChatHandler(chatService);
+    return await handler.Chat(message);
+});
 
 app.Run();
 
