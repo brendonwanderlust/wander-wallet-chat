@@ -3,7 +3,7 @@ using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
 using wander_wallet_chat;
 
-var builder = WebApplication.CreateSlimBuilder(args); 
+var builder = WebApplication.CreateSlimBuilder(args);
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
 var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" };
 
@@ -29,9 +29,10 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("SSE", policy =>
     {
-        policy.WithOrigins(allowedOrigins) 
+        policy.WithOrigins(allowedOrigins)
+              .WithHeaders(headers)
               .WithMethods("GET", "POST", "OPTIONS")
-              .AllowAnyHeader()
+              .WithExposedHeaders("Content-Length", "Content-Type")
               .AllowCredentials()
               .SetPreflightMaxAge(TimeSpan.FromSeconds(3600));
     });
@@ -39,7 +40,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseCors(); 
+app.UseCors();
 
 app.UseRouting();
 
@@ -50,7 +51,7 @@ if (builder.Environment.IsDevelopment())
 
 var chatApi = app.MapGroup("/chat");
 chatApi.MapGet("/", async (
-    [FromQuery] string message, 
+    [FromQuery] string message,
     ChatHandler handler) =>
 {
     var reply = await handler.Chat(message);
@@ -59,9 +60,16 @@ chatApi.MapGet("/", async (
 
 
 chatApi.MapGet("/stream", async (
-    [FromQuery] string message, 
-    ChatHandler handler, 
-    HttpContext context) => { 
+    [FromQuery] string message,
+    ChatHandler handler,
+    HttpContext context) =>
+{
+    var origin = context.Request.Headers.Origin;
+    Console.WriteLine(origin);
+    if (!string.IsNullOrEmpty(origin) && allowedOrigins.Any(o => o == origin))
+    {
+        context.Response.Headers.Append("Access-Control-Allow-Origin", origin);
+    }
     context.Response.Headers.Append("Content-Type", "text/event-stream");
     context.Response.Headers.Append("Cache-Control", "no-cache");
     context.Response.Headers.Append("Connection", "keep-alive");
@@ -93,7 +101,7 @@ public record ReplyResponse(string Reply);
 )]
 [JsonSerializable(typeof(ReplyResponse))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
-{ 
+{
 
 }
 
