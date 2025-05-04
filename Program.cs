@@ -57,11 +57,18 @@ chatApi.MapGet("/", async (string message) =>{
     return await handler.Chat(message);
 });
 
-chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContext context) => {     
+chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContext context) => {  
+    var origin = context.Request.Headers["Origin"].ToString();
+    if (string.IsNullOrEmpty(origin) || !allowedOrigins.Contains(origin))
+    {
+        origin = allowedOrigins[0]; // Default to first allowed origin if none matches
+    }
+
+    // CORS headers for SSE
+    context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
     context.Response.Headers.Add("Content-Type", "text/event-stream");
     context.Response.Headers.Add("Cache-Control", "no-cache");
-    context.Response.Headers.Add("Connection", "keep-alive"); 
-
+    context.Response.Headers.Add("Connection", "keep-alive");
     try
     {
         await foreach (var chunk in handler.ChatStreaming(message))
