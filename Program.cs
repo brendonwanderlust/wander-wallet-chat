@@ -18,7 +18,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins(allowedOrigins)
               .WithHeaders(headers)
               .WithMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-              .WithExposedHeaders("Content-Length") 
+              .WithExposedHeaders("Content-Length", "Content-Type")
               .AllowCredentials();
     });
 }); 
@@ -26,6 +26,22 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 app.UseCors();
+
+//app.Use(async (context, next) =>
+//{
+//    // Handle preflight requests for SSE
+//    if (context.Request.Method == "OPTIONS")
+//    {
+//        context.Response.Headers.Add("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
+//        context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+//        context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
+//        context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
+//        context.Response.StatusCode = 200;
+//        return;
+//    }
+
+//    await next();
+//});
 
 app.UseRouting();
 
