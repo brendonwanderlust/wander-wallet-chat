@@ -30,7 +30,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("SSE", policy =>
     {
         policy.WithOrigins(allowedOrigins)
-              .WithHeaders("Content-Type", "Accept", "Authorization", "Cache-Control")
+              .WithHeaders(headers)
               .WithMethods("GET", "POST", "OPTIONS")
               .AllowCredentials()
               .SetPreflightMaxAge(TimeSpan.FromSeconds(3600));
@@ -49,14 +49,19 @@ if (builder.Environment.IsDevelopment())
 }
 
 var chatApi = app.MapGroup("/chat");
-chatApi.MapGet("/", async ([FromQuery] string message, ChatHandler handler) =>
+chatApi.MapGet("/", async (
+    [FromQuery] string message, 
+    ChatHandler handler) =>
 {
     var reply = await handler.Chat(message);
     return Results.Ok(reply);
 });
 
 
-chatApi.MapGet("/stream", async ([FromQuery] string message, ChatHandler handler, HttpContext context) => { 
+chatApi.MapGet("/stream", async (
+    [FromQuery] string message, 
+    ChatHandler handler, 
+    HttpContext context) => { 
     context.Response.Headers.Append("Content-Type", "text/event-stream");
     context.Response.Headers.Append("Cache-Control", "no-cache");
     context.Response.Headers.Append("Connection", "keep-alive");
