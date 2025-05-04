@@ -33,5 +33,13 @@ namespace wander_wallet_chat
             var result = await kernel.InvokePromptAsync(message);
             return result.GetValue<string>();
         }
+
+        public async IAsyncEnumerable<string> InvokePromptStreamingAsync(string message)
+        {
+            await foreach (var chunk in kernel.InvokePromptStreamingAsync(message))
+            {
+                yield return chunk.ToString();
+            }
+        }
     }
 }

@@ -41,6 +41,31 @@ chatApi.MapGet("/", async (string message) =>{
     return await handler.Chat(message);
 });
 
+chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContext context) => {     
+    context.Response.Headers.Add("Content-Type", "text/event-stream");
+    context.Response.Headers.Add("Cache-Control", "no-cache");
+    context.Response.Headers.Add("Connection", "keep-alive"); 
+
+    try
+    {
+        await foreach (var chunk in handler.ChatStreaming(message))
+        {
+            // Server-Sent Events format
+            await context.Response.WriteAsync($"data: {chunk}\n\n");
+            await context.Response.Body.FlushAsync();
+        }
+
+        // Send completion event
+        await context.Response.WriteAsync("event: complete\ndata: \n\n");
+        await context.Response.Body.FlushAsync();
+    }
+    catch (Exception ex)
+    {
+        await context.Response.WriteAsync($"event: error\ndata: {ex.Message}\n\n");
+        await context.Response.Body.FlushAsync();
+    }
+});
+
 app.Run();
 
 public record Todo(int Id, string? Title, DateOnly? DueBy = null, bool IsComplete = false);
