@@ -21,27 +21,20 @@ builder.Services.AddCors(options =>
               .WithExposedHeaders("Content-Length", "Content-Type")
               .AllowCredentials();
     });
+
+    options.AddPolicy("SSE", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .WithHeaders("Content-Type", "Accept", "Authorization", "Cache-Control")
+              .WithMethods("GET", "POST", "OPTIONS")
+              .AllowCredentials()
+              .SetPreflightMaxAge(TimeSpan.FromSeconds(3600));
+    });
 }); 
 
 var app = builder.Build();
 
-app.UseCors();
-
-app.Use(async (context, next) =>
-{
-    // Handle preflight requests for SSE
-    if (context.Request.Method == "OPTIONS")
-    {
-        context.Response.Headers.Add("Access-Control-Allow-Origin", context.Request.Headers["Origin"].ToString());
-        context.Response.Headers.Add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-        context.Response.Headers.Add("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept");
-        context.Response.Headers.Add("Access-Control-Allow-Credentials", "true");
-        context.Response.StatusCode = 200;
-        return;
-    }
-
-    await next();
-});
+app.UseCors(); 
 
 app.UseRouting();
 
@@ -57,28 +50,15 @@ chatApi.MapGet("/", async (string message) =>{
     return await handler.Chat(message);
 });
 
-chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContext context) => {  
-    var origin = context.Request.Headers["Origin"].ToString();
-    if (string.IsNullOrEmpty(origin) || !allowedOrigins.Contains(origin))
-    {
-        origin = allowedOrigins[0]; // Default to first allowed origin if none matches
-    }
-
-    // CORS headers for SSE
-    context.Response.Headers.Add("Access-Control-Allow-Origin", origin);
-    context.Response.Headers.Add("Content-Type", "text/event-stream");
-    context.Response.Headers.Add("Cache-Control", "no-cache");
-    context.Response.Headers.Add("Connection", "keep-alive");
+chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContext context) => {
     try
     {
         await foreach (var chunk in handler.ChatStreaming(message))
         {
-            // Server-Sent Events format
             await context.Response.WriteAsync($"data: {chunk}\n\n");
             await context.Response.Body.FlushAsync();
         }
 
-        // Send completion event
         await context.Response.WriteAsync("event: complete\ndata: \n\n");
         await context.Response.Body.FlushAsync();
     }
@@ -87,7 +67,7 @@ chatApi.MapGet("/stream", async (string message, ChatHandler handler, HttpContex
         await context.Response.WriteAsync($"event: error\ndata: {ex.Message}\n\n");
         await context.Response.Body.FlushAsync();
     }
-});
+}).RequireCors("SSE");
 
 app.Run();
 
