@@ -1,15 +1,27 @@
 using System.Text.Json.Serialization;
 using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using wander_wallet_chat;
 
 var builder = WebApplication.CreateSlimBuilder(args);
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
 var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" };
+var endpoint = Environment.GetEnvironmentVariable("AzureOpenAIURL");
+var apiKey = Environment.GetEnvironmentVariable("AzureOpenAIKey");
+var deploymentName = Environment.GetEnvironmentVariable("AzureOpenAIDeploymentName");
 
 builder.Services.AddSingleton<ConversationService>();
 builder.Services.AddSingleton<ChatService>();
 builder.Services.AddSingleton<ChatHandler>();
+builder.Services.AddSingleton<IChatCompletionService>(_ =>
+    new AzureOpenAIChatCompletionService(
+        deploymentName: deploymentName,
+        endpoint: endpoint,
+        apiKey: apiKey
+    )
+);
 
 //// Configure JSON for AOT + camelCase + metadata
 builder.Services.ConfigureHttpJsonOptions(options =>
