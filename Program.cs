@@ -7,6 +7,7 @@ var builder = WebApplication.CreateSlimBuilder(args);
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
 var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" };
 
+builder.Services.AddSingleton<ConversationService>();
 builder.Services.AddSingleton<ChatService>();
 builder.Services.AddSingleton<ChatHandler>();
 
@@ -51,15 +52,16 @@ if (builder.Environment.IsDevelopment())
 var chatApi = app.MapGroup("/chat");
 chatApi.MapGet("/", async (
     [FromQuery] string message,
+    [FromQuery] string userId,
     ChatHandler handler) =>
 {
-    var reply = await handler.Chat(message);
+    var reply = await handler.Chat(userId, message);
     return Results.Ok(reply);
 });
 
-
 chatApi.MapGet("/stream", async (
     [FromQuery] string message,
+    [FromQuery] string userId,
     ChatHandler handler,
     HttpContext context) =>
 {
@@ -69,7 +71,7 @@ chatApi.MapGet("/stream", async (
 
     try
     {
-        await foreach (var chunk in handler.ChatStreaming(message))
+        await foreach (var chunk in handler.ChatStreaming(userId, message))
         {
             await context.Response.WriteAsync($"data: {chunk}\n\n");
             await context.Response.Body.FlushAsync();

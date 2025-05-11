@@ -9,13 +9,26 @@
             this.chatService = chatService;
         }
 
-        public async Task<string> Chat(string message) {
-            return await chatService.InvokePromptAsync(message);
+        public async Task<string> Chat(string userId, string message)
+        {
+            // Default to a generic user ID if none provided
+            if (string.IsNullOrEmpty(userId))
+            {
+                userId = "anonymous-user";
+            }
+
+            return await chatService.InvokePromptAsync(userId, message);
         }
 
-        public async IAsyncEnumerable<string> ChatStreaming(string message)
+        public async IAsyncEnumerable<string> ChatStreaming(string userId, string message)
         {
-            await foreach (var chunk in chatService.InvokePromptStreamingAsync(message))
+            // Default to a generic user ID if none provided
+            if (string.IsNullOrEmpty(userId))
+            {
+                userId = "anonymous-user";
+            }
+
+            await foreach (var chunk in chatService.InvokePromptStreamingAsync(userId, message))
             {
                 yield return chunk;
             }
