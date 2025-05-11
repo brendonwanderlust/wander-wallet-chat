@@ -1,79 +1,69 @@
-﻿using Microsoft.SemanticKernel;
+﻿using System.Text;
+using Microsoft.SemanticKernel.ChatCompletion;
+using wander_wallet_chat;
 
-namespace wander_wallet_chat
+public class ChatService
 {
-    public class ChatService
+    private readonly IChatCompletionService chatCompletion;
+    private readonly ConversationService conversationService;
+
+    public ChatService(IChatCompletionService chatCompletion, ConversationService conversationService)
     {
-        private readonly Kernel kernel;
-        private readonly ConversationService conversationService;
+        this.chatCompletion = chatCompletion;
+        this.conversationService = conversationService;
+    }
 
-        public ChatService(ConversationService conversationService)
+    private ChatHistory BuildChatHistory(string userId)
+    {
+        var history = new ChatHistory("You are a helpful travel assistant.");
+        var conversation = conversationService.GetOrCreateConversation(userId);
+
+        foreach (var msg in conversation.Messages)
         {
-            this.conversationService = conversationService;
+            if (msg.Role == "user")
+                history.AddUserMessage(msg.Content);
+            else if (msg.Role == "assistant")
+                history.AddAssistantMessage(msg.Content);
+        }
 
-            var builder = Kernel.CreateBuilder();
+        return history;
+    }
 
-            var endpoint = Environment.GetEnvironmentVariable("AzureOpenAIURL");
-            var apiKey = Environment.GetEnvironmentVariable("AzureOpenAIKey");
-            var deploymentName = Environment.GetEnvironmentVariable("AzureOpenAIDeploymentName");
+    public async Task<string> InvokePromptAsync(string userId, string input)
+    {
+        // Track user message
+        conversationService.AddMessage(userId, "user", input);
 
-            if (string.IsNullOrEmpty(endpoint) || string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(deploymentName))
+        var chatHistory = BuildChatHistory(userId);
+
+        // Ask SK to respond using full chat history
+        var result = await chatCompletion.GetChatMessageContentAsync(chatHistory);
+
+        // Track assistant reply
+        conversationService.AddMessage(userId, "assistant", result.Content);
+
+        return result.Content;
+    }
+
+    public async IAsyncEnumerable<string> InvokePromptStreamingAsync(string userId, string input)
+    {
+        conversationService.AddMessage(userId, "user", input);
+
+        var chatHistory = BuildChatHistory(userId);
+
+        var response = chatCompletion.GetStreamingChatMessageContentsAsync(chatHistory);
+
+        var assistantReply = new StringBuilder();
+
+        await foreach (var chunk in response)
+        {
+            if (!string.IsNullOrEmpty(chunk.Content))
             {
-                throw new InvalidOperationException("Required Azure OpenAI configuration is missing");
+                assistantReply.Append(chunk.Content);
+                yield return chunk.Content;
             }
-
-            builder.AddAzureOpenAIChatCompletion(
-                deploymentName: deploymentName,
-                endpoint: endpoint,
-                apiKey: apiKey
-            );
-
-            kernel = builder.Build();
         }
 
-        public async Task<string> InvokePromptAsync(string userId, string message)
-        {
-            // Add user message to conversation history
-            conversationService.AddMessage(userId, "user", message);
-
-            // Get conversation history
-            var history = conversationService.GetFormattedHistory(userId);
-
-            // Create prompt with history context
-            var prompt = $"Previous conversation:\n{history}\n\nUser: {message}\nAssistant:";
-
-            // Invoke AI model
-            var result = await kernel.InvokePromptAsync(prompt);
-            var response = result.GetValue<string>();
-
-            // Add AI response to conversation history
-            conversationService.AddMessage(userId, "assistant", response);
-
-            return response;
-        }
-
-        public async IAsyncEnumerable<string> InvokePromptStreamingAsync(string userId, string message)
-        {
-            // Add user message to conversation history
-            conversationService.AddMessage(userId, "user", message);
-
-            // Get conversation history
-            var history = conversationService.GetFormattedHistory(userId);
-
-            // Create prompt with history context
-            var prompt = $"Previous conversation:\n{history}\n\nUser: {message}\nAssistant:";
-
-            string fullResponse = "";
-
-            await foreach (var chunk in kernel.InvokePromptStreamingAsync(prompt))
-            {
-                var text = chunk.ToString();
-                fullResponse += text;
-                yield return text;
-            }
-
-            // Add complete AI response to conversation history
-            conversationService.AddMessage(userId, "assistant", fullResponse);
-        }
+        conversationService.AddMessage(userId, "assistant", assistantReply.ToString());
     }
 }
