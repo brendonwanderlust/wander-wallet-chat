@@ -7,7 +7,9 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using wander_wallet_chat;
 using wander_wallet_chat.Plugins;
 
-var builder = WebApplication.CreateSlimBuilder(args);
+// Use regular CreateBuilder instead of CreateSlimBuilder
+var builder = WebApplication.CreateBuilder(args);
+
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
 var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" };
 var endpoint = Environment.GetEnvironmentVariable("AzureOpenAIURL");
@@ -52,12 +54,12 @@ builder.Services.AddSingleton<IChatCompletionService>(serviceProvider =>
     return kernel.GetRequiredService<IChatCompletionService>();
 });
 
-// Configure JSON serialization (without source generation)
-builder.Services.Configure<JsonOptions>(options =>
+// Configure JSON serialization for the regular builder
+builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
-    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
-    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.SerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 builder.Services.AddCors(options =>
@@ -122,4 +124,3 @@ chatApi.MapPost("/stream", async (
 }).RequireCors("SSE");
 
 app.Run();
- 
