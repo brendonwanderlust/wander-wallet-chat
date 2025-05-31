@@ -271,10 +271,7 @@ namespace wander_wallet_chat.Plugins
         public string Description { get; set; }
 
         [JsonPropertyName("icon")]
-        public string Icon { get; set; }
-
-        [JsonPropertyName("stations")]
-        public Dictionary<string, StationInfo> Stations { get; set; }
+        public string Icon { get; set; } 
 
         [JsonPropertyName("source")]
         public string Source { get; set; }
@@ -340,10 +337,7 @@ namespace wander_wallet_chat.Plugins
         public string Conditions { get; set; }
 
         [JsonPropertyName("icon")]
-        public string Icon { get; set; }
-
-        [JsonPropertyName("stations")]
-        public Dictionary<string, StationInfo> Stations { get; set; }
+        public string Icon { get; set; } 
 
         [JsonPropertyName("source")]
         public string Source { get; set; }
@@ -406,10 +400,7 @@ namespace wander_wallet_chat.Plugins
         public string Conditions { get; set; }
 
         [JsonPropertyName("icon")]
-        public string Icon { get; set; }
-
-        [JsonPropertyName("stations")]
-        public Dictionary<string, StationInfo> Stations { get; set; }
+        public string Icon { get; set; } 
 
         [JsonPropertyName("source")]
         public string Source { get; set; }
