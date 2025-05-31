@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.SemanticKernel;
 
 namespace wander_wallet_chat.Plugins
@@ -60,7 +61,7 @@ namespace wander_wallet_chat.Plugins
                 var jsonContent = await response.Content.ReadAsStringAsync();
                 _logger.LogError($"Content retrieval successful", jsonContent);
                 _logger.LogError($"Attempting Deserialization");
-                var weatherData = JsonSerializer.Deserialize<WeatherApiResponse>(jsonContent);
+                var weatherData = JsonSerializer.Deserialize<WeatherResponse>(jsonContent);
                 _logger.LogError($" Deserialization Successful: {weatherData}");
 
                 if (weatherData == null)
@@ -88,7 +89,7 @@ namespace wander_wallet_chat.Plugins
             }
         }
 
-        private static string FormatWeatherResponse(WeatherApiResponse weather, string unitGroup, ILogger<WeatherPlugin> _logger)
+        private static string FormatWeatherResponse(WeatherResponse weather, string unitGroup, ILogger<WeatherPlugin> _logger)
         {
             _logger.LogError("Entered FormatWeatherResponse method", weather);
 
@@ -123,7 +124,7 @@ namespace wander_wallet_chat.Plugins
                 }
 
                 // Today's forecast
-                if (weather.Days?.Length > 0)
+                if (weather.Days?.Count > 0)
                 {
                     var today = weather.Days[0];
                     response.AppendLine($"**Today's Forecast:**");
@@ -137,10 +138,10 @@ namespace wander_wallet_chat.Plugins
                 }
 
                 // 3-day forecast
-                if (weather.Days?.Length > 1)
+                if (weather.Days?.Count > 1)
                 {
                     response.AppendLine($"**3-Day Forecast:**");
-                    for (int i = 1; i < Math.Min(4, weather.Days.Length); i++)
+                    for (int i = 1; i < Math.Min(4, weather.Days.Count); i++)
                     {
                         var day = weather.Days[i];
                         var date = DateTime.Parse(day.DateTime).ToString("ddd, MMM d");
@@ -149,7 +150,7 @@ namespace wander_wallet_chat.Plugins
                 }
 
                 // Weather alerts if any
-                if (weather.Alerts?.Length > 0)
+                if (weather.Alerts?.Count > 0)
                 {
                     response.AppendLine();
                     response.AppendLine($"⚠️ **Weather Alerts:**");
@@ -168,40 +169,298 @@ namespace wander_wallet_chat.Plugins
         }
     }
 
-    // Data models for the Weather API response
-    public class WeatherApiResponse
+    public class WeatherResponse
     {
-        public string? ResolvedAddress { get; set; }
-        public string? Description { get; set; }
-        public CurrentConditions? CurrentConditions { get; set; }
-        public Day[]? Days { get; set; }
-        public Alert[]? Alerts { get; set; }
+        [JsonPropertyName("queryCost")]
+        public int QueryCost { get; set; }
+
+        [JsonPropertyName("latitude")]
+        public double Latitude { get; set; }
+
+        [JsonPropertyName("longitude")]
+        public double Longitude { get; set; }
+
+        [JsonPropertyName("resolvedAddress")]
+        public string ResolvedAddress { get; set; }
+
+        [JsonPropertyName("address")]
+        public string Address { get; set; }
+
+        [JsonPropertyName("timezone")]
+        public string Timezone { get; set; }
+
+        [JsonPropertyName("tzoffset")]
+        public double TimezoneOffset { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+
+        [JsonPropertyName("days")]
+        public List<DayWeather> Days { get; set; }
+
+        [JsonPropertyName("alerts")]
+        public List<WeatherAlert> Alerts { get; set; }
+
+        [JsonPropertyName("currentConditions")]
+        public CurrentConditions CurrentConditions { get; set; }
+    }
+
+    public class DayWeather
+    {
+        [JsonPropertyName("datetime")]
+        public string DateTime { get; set; }
+
+        [JsonPropertyName("datetimeEpoch")]
+        public long DateTimeEpoch { get; set; }
+
+        [JsonPropertyName("tempmax")]
+        public double? TempMax { get; set; }
+
+        [JsonPropertyName("tempmin")]
+        public double? TempMin { get; set; }
+
+        [JsonPropertyName("temp")]
+        public double? Temp { get; set; }
+
+        [JsonPropertyName("feelslike")]
+        public double? FeelsLike { get; set; }
+
+        [JsonPropertyName("humidity")]
+        public double? Humidity { get; set; }
+
+        [JsonPropertyName("precip")]
+        public double? Precipitation { get; set; }
+
+        [JsonPropertyName("precipprob")]
+        public double? PrecipitationProbability { get; set; }
+
+        [JsonPropertyName("windspeed")]
+        public double? WindSpeed { get; set; }
+
+        [JsonPropertyName("windgust")]
+        public double? WindGust { get; set; }
+
+        [JsonPropertyName("winddir")]
+        public double? WindDirection { get; set; }
+
+        [JsonPropertyName("pressure")]
+        public double? Pressure { get; set; }
+
+        [JsonPropertyName("cloudcover")]
+        public double? CloudCover { get; set; }
+
+        [JsonPropertyName("visibility")]
+        public double? Visibility { get; set; }
+
+        [JsonPropertyName("uvindex")]
+        public double? UVIndex { get; set; }
+
+        [JsonPropertyName("sunrise")]
+        public string Sunrise { get; set; }
+
+        [JsonPropertyName("sunset")]
+        public string Sunset { get; set; }
+
+        [JsonPropertyName("moonphase")]
+        public double? MoonPhase { get; set; }
+
+        [JsonPropertyName("conditions")]
+        public string Conditions { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+
+        [JsonPropertyName("icon")]
+        public string Icon { get; set; }
+
+        [JsonPropertyName("stations")]
+        public Dictionary<string, StationInfo> Stations { get; set; }
+
+        [JsonPropertyName("source")]
+        public string Source { get; set; }
+
+        [JsonPropertyName("hours")]
+        public List<HourWeather> Hours { get; set; }
+    }
+
+    public class HourWeather
+    {
+        [JsonPropertyName("datetime")]
+        public string DateTime { get; set; }
+
+        [JsonPropertyName("datetimeEpoch")]
+        public long DateTimeEpoch { get; set; }
+
+        [JsonPropertyName("temp")]
+        public double? Temp { get; set; }
+
+        [JsonPropertyName("feelslike")]
+        public double? FeelsLike { get; set; }
+
+        [JsonPropertyName("humidity")]
+        public double? Humidity { get; set; }
+
+        [JsonPropertyName("dew")]
+        public double? DewPoint { get; set; }
+
+        [JsonPropertyName("precip")]
+        public double? Precipitation { get; set; }
+
+        [JsonPropertyName("precipprob")]
+        public double? PrecipitationProbability { get; set; }
+
+        [JsonPropertyName("snow")]
+        public double? Snow { get; set; }
+
+        [JsonPropertyName("snowdepth")]
+        public double? SnowDepth { get; set; }
+
+        [JsonPropertyName("windspeed")]
+        public double? WindSpeed { get; set; }
+
+        [JsonPropertyName("windgust")]
+        public double? WindGust { get; set; }
+
+        [JsonPropertyName("winddir")]
+        public double? WindDirection { get; set; }
+
+        [JsonPropertyName("pressure")]
+        public double? Pressure { get; set; }
+
+        [JsonPropertyName("cloudcover")]
+        public double? CloudCover { get; set; }
+
+        [JsonPropertyName("visibility")]
+        public double? Visibility { get; set; }
+
+        [JsonPropertyName("uvindex")]
+        public double? UVIndex { get; set; }
+
+        [JsonPropertyName("conditions")]
+        public string Conditions { get; set; }
+
+        [JsonPropertyName("icon")]
+        public string Icon { get; set; }
+
+        [JsonPropertyName("stations")]
+        public Dictionary<string, StationInfo> Stations { get; set; }
+
+        [JsonPropertyName("source")]
+        public string Source { get; set; }
     }
 
     public class CurrentConditions
     {
-        public double Temp { get; set; }
+        [JsonPropertyName("datetime")]
+        public string DateTime { get; set; }
+
+        [JsonPropertyName("datetimeEpoch")]
+        public long DateTimeEpoch { get; set; }
+
+        [JsonPropertyName("temp")]
+        public double? Temp { get; set; }
+
+        [JsonPropertyName("feelslike")]
         public double? FeelsLike { get; set; }
+
+        [JsonPropertyName("humidity")]
         public double? Humidity { get; set; }
+
+        [JsonPropertyName("dew")]
+        public double? DewPoint { get; set; }
+
+        [JsonPropertyName("precip")]
+        public double? Precipitation { get; set; }
+
+        [JsonPropertyName("precipprob")]
+        public double? PrecipitationProbability { get; set; }
+
+        [JsonPropertyName("snow")]
+        public double? Snow { get; set; }
+
+        [JsonPropertyName("snowdepth")]
+        public double? SnowDepth { get; set; }
+
+        [JsonPropertyName("windspeed")]
         public double? WindSpeed { get; set; }
-        public string? Conditions { get; set; }
-        public string? Icon { get; set; }
+
+        [JsonPropertyName("windgust")]
+        public double? WindGust { get; set; }
+
+        [JsonPropertyName("winddir")]
+        public double? WindDirection { get; set; }
+
+        [JsonPropertyName("pressure")]
+        public double? Pressure { get; set; }
+
+        [JsonPropertyName("cloudcover")]
+        public double? CloudCover { get; set; }
+
+        [JsonPropertyName("visibility")]
+        public double? Visibility { get; set; }
+
+        [JsonPropertyName("uvindex")]
+        public double? UVIndex { get; set; }
+
+        [JsonPropertyName("conditions")]
+        public string Conditions { get; set; }
+
+        [JsonPropertyName("icon")]
+        public string Icon { get; set; }
+
+        [JsonPropertyName("stations")]
+        public Dictionary<string, StationInfo> Stations { get; set; }
+
+        [JsonPropertyName("source")]
+        public string Source { get; set; }
     }
 
-    public class Day
+    public class WeatherAlert
     {
-        public string? DateTime { get; set; }
-        public double TempMax { get; set; }
-        public double TempMin { get; set; }
-        public double Temp { get; set; }
-        public string? Conditions { get; set; }
-        public string? Description { get; set; }
-        public string? Icon { get; set; }
+        [JsonPropertyName("event")]
+        public string Event { get; set; }
+
+        [JsonPropertyName("description")]
+        public string Description { get; set; }
+
+        [JsonPropertyName("starts")]
+        public string Starts { get; set; }
+
+        [JsonPropertyName("ends")]
+        public string Ends { get; set; }
+
+        [JsonPropertyName("severity")]
+        public string Severity { get; set; }
+
+        [JsonPropertyName("uri")]
+        public string Uri { get; set; }
     }
 
-    public class Alert
+    public class StationInfo
     {
-        public string? Event { get; set; }
-        public string? Description { get; set; }
+        [JsonPropertyName("distance")]
+        public double? Distance { get; set; }
+
+        [JsonPropertyName("latitude")]
+        public double? Latitude { get; set; }
+
+        [JsonPropertyName("longitude")]
+        public double? Longitude { get; set; }
+
+        [JsonPropertyName("useCount")]
+        public int? UseCount { get; set; }
+
+        [JsonPropertyName("id")]
+        public string Id { get; set; }
+
+        [JsonPropertyName("name")]
+        public string Name { get; set; }
+
+        [JsonPropertyName("quality")]
+        public int? Quality { get; set; }
+
+        [JsonPropertyName("contribution")]
+        public int? Contribution { get; set; }
     }
+
 }
