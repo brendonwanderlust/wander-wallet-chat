@@ -1,9 +1,9 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using wander_wallet_chat;
 using wander_wallet_chat.Plugins;
 
@@ -13,6 +13,11 @@ var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-L
 var endpoint = Environment.GetEnvironmentVariable("AzureOpenAIURL");
 var apiKey = Environment.GetEnvironmentVariable("AzureOpenAIKey");
 var deploymentName = Environment.GetEnvironmentVariable("AzureOpenAIDeploymentName");
+
+// Register services
+builder.Services.AddSingleton<ConversationService>();
+builder.Services.AddSingleton<ChatService>();
+builder.Services.AddSingleton<ChatHandler>();
 
 // Register HttpClient for weather API calls
 builder.Services.AddHttpClient<WeatherPlugin>();
@@ -40,19 +45,19 @@ builder.Services.AddSingleton<Kernel>(serviceProvider =>
     return kernel;
 });
 
-builder.Services.AddSingleton<ConversationService>();
-builder.Services.AddSingleton<ChatService>();
-builder.Services.AddSingleton<ChatHandler>();
+// Register IChatCompletionService separately for backwards compatibility
 builder.Services.AddSingleton<IChatCompletionService>(serviceProvider =>
 {
     var kernel = serviceProvider.GetRequiredService<Kernel>();
     return kernel.GetRequiredService<IChatCompletionService>();
 });
 
-//// Configure JSON for AOT + camelCase + metadata
-builder.Services.ConfigureHttpJsonOptions(options =>
+// Configure JSON serialization (without source generation)
+builder.Services.Configure<JsonOptions>(options =>
 {
-    options.SerializerOptions.TypeInfoResolver = AppJsonSerializerContext.Default;
+    options.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
+    options.JsonSerializerOptions.DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull;
+    options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
 builder.Services.AddCors(options =>
@@ -79,7 +84,7 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-app.UseRouting(); 
+app.UseRouting();
 app.UseCors();
 
 if (builder.Environment.IsDevelopment())
@@ -87,7 +92,8 @@ if (builder.Environment.IsDevelopment())
     Env.Load();
 }
 
-var chatApi = app.MapGroup("/chat"); 
+var chatApi = app.MapGroup("/chat");
+
 chatApi.MapPost("/stream", async (
     [FromBody] ChatRequest request,
     ChatHandler handler,
@@ -116,18 +122,4 @@ chatApi.MapPost("/stream", async (
 }).RequireCors("SSE");
 
 app.Run();
-public record ReplyResponse(string Reply);
-
-[JsonSourceGenerationOptions(
-    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-)]
-[JsonSerializable(typeof(ReplyResponse))]
-[JsonSerializable(typeof(ChatRequest))]
-internal partial class AppJsonSerializerContext : JsonSerializerContext
-{
-
-}
-
-
-
+ 
