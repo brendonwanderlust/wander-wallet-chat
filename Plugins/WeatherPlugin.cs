@@ -85,7 +85,7 @@ namespace wander_wallet_chat.Plugins
 
         private static string FormatWeatherResponse(WeatherApiResponse weather, string unitGroup, ILogger<WeatherPlugin> _logger)
         {
-            _logger.LogError("Entered FormatWeatherResponse method");
+            _logger.LogError("Entered FormatWeatherResponse method", weather);
 
             var tempUnit = unitGroup == "metric" ? "°C" : "°F";
             var response = new StringBuilder();
