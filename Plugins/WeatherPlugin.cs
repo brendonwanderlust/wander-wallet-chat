@@ -29,8 +29,6 @@ namespace wander_wallet_chat.Plugins
         {
             try
             {
-                _logger.LogInformation("Weather function called for: {Location}", location);
-
                 // Validate and sanitize inputs
                 if (string.IsNullOrWhiteSpace(location))
                 {
@@ -50,23 +48,16 @@ namespace wander_wallet_chat.Plugins
 
                 var response = await _httpClient.GetAsync(url);
 
-                _logger.LogError($"Response status: {response.StatusCode}. Response reason phrase: {response.ReasonPhrase}. Response success: {response.IsSuccessStatusCode}. Response content: {await response.Content.ReadAsStringAsync()}.");
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError($"Weather call failed for {location}", $"Status code: {response.StatusCode}", $"Failure Reason: {response.ReasonPhrase}");
                     return $"Sorry, I couldn't get weather information for {location}. The weather service might be unavailable or the location wasn't found.";
                 }
 
-                _logger.LogError($"Attempting content retrieval");
                 var jsonContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError($"Content retrieval successful", jsonContent);
-                _logger.LogError($"Attempting Deserialization");
                 var weatherData = JsonSerializer.Deserialize<WeatherResponse>(jsonContent);
-                _logger.LogError($" Deserialization Successful: {weatherData}");
 
                 if (weatherData == null)
                 {
-                    _logger.LogError($"Couldn't parse the weather data {location}", $"Content: {jsonContent}");
                     return $"Sorry, I couldn't parse the weather data for {location}.";
                 }
 
@@ -74,12 +65,10 @@ namespace wander_wallet_chat.Plugins
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "Error getting weather for {Location}", location);
                 return $"I'm having trouble connecting to the weather service right now. Please try again later.";
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "Error getting weather for {Location}", location);
                 return $"The weather request timed out. Please try again.";
             }
             catch (Exception ex)
@@ -91,8 +80,6 @@ namespace wander_wallet_chat.Plugins
 
         private static string FormatWeatherResponse(WeatherResponse weather, string unitGroup, ILogger<WeatherPlugin> _logger)
         {
-            _logger.LogError("Entered FormatWeatherResponse method", weather);
-
             var tempUnit = unitGroup == "metric" ? "°C" : "°F";
             var response = new StringBuilder();
             try
