@@ -49,6 +49,7 @@ namespace wander_wallet_chat.Plugins
 
                 var response = await _httpClient.GetAsync(url);
 
+                _logger.LogError($"Response status: {response.StatusCode}. Response reason phrase: {response.ReasonPhrase}. Response success: {response.IsSuccessStatusCode}. Response content: {await response.Content.ReadAsStringAsync()}.");
                 if (!response.IsSuccessStatusCode)
                 {
                     _logger.LogError($"Weather call failed for {location}", $"Status code: {response.StatusCode}", $"Failure Reason: {response.ReasonPhrase}");
