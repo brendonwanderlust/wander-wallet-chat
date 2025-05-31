@@ -54,7 +54,7 @@ builder.Services.AddSingleton<IChatCompletionService>(serviceProvider =>
     return kernel.GetRequiredService<IChatCompletionService>();
 });
 
-// Configure JSON serialization for the regular builder
+// Configure JSON serialization for regular reflection-based approach
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
