@@ -51,12 +51,16 @@ namespace wander_wallet_chat.Plugins
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogError( $"Weather call failed for {location}", $"Status code: {response.StatusCode}", $"Failure Reason: {response.ReasonPhrase}");
+                    _logger.LogError($"Weather call failed for {location}", $"Status code: {response.StatusCode}", $"Failure Reason: {response.ReasonPhrase}");
                     return $"Sorry, I couldn't get weather information for {location}. The weather service might be unavailable or the location wasn't found.";
                 }
 
+                _logger.LogError($"Attempting content retrieval");
                 var jsonContent = await response.Content.ReadAsStringAsync();
+                _logger.LogError($"Content retrieval successful", jsonContent);
+                _logger.LogError($"Attempting Deserialization");
                 var weatherData = JsonSerializer.Deserialize<WeatherApiResponse>(jsonContent);
+                _logger.LogError($" Deserialization Successful: ", weatherData);
 
                 if (weatherData == null)
                 {
@@ -77,7 +81,7 @@ namespace wander_wallet_chat.Plugins
                 return $"The weather request timed out. Please try again.";
             }
             catch (Exception ex)
-            { 
+            {
                 _logger.LogError(ex, "Error getting weather for {Location}", location);
                 return $"Sorry, I encountered an error getting weather information for {location}.";
             }
@@ -89,68 +93,74 @@ namespace wander_wallet_chat.Plugins
 
             var tempUnit = unitGroup == "metric" ? "°C" : "°F";
             var response = new StringBuilder();
-
-            response.AppendLine($"🌤️ **Weather for {weather.ResolvedAddress}**");
-            response.AppendLine();
-
-            // Current conditions
-            if (weather.CurrentConditions != null)
+            try
             {
-                var current = weather.CurrentConditions;
-                response.AppendLine($"**Current Conditions:**");
-                response.AppendLine($"• Temperature: {current.Temp:F1}{tempUnit}");
-                response.AppendLine($"• Conditions: {current.Conditions}");
+                response.AppendLine($"🌤️ **Weather for {weather.ResolvedAddress}**");
+                response.AppendLine();
 
-                if (current.FeelsLike.HasValue)
-                    response.AppendLine($"• Feels like: {current.FeelsLike:F1}{tempUnit}");
-
-                if (current.Humidity.HasValue)
-                    response.AppendLine($"• Humidity: {current.Humidity:F0}%");
-
-                if (current.WindSpeed.HasValue)
+                // Current conditions
+                if (weather.CurrentConditions != null)
                 {
-                    var windUnit = unitGroup == "metric" ? "km/h" : "mph";
-                    response.AppendLine($"• Wind: {current.WindSpeed:F1} {windUnit}");
+                    var current = weather.CurrentConditions;
+                    response.AppendLine($"**Current Conditions:**");
+                    response.AppendLine($"• Temperature: {current.Temp:F1}{tempUnit}");
+                    response.AppendLine($"• Conditions: {current.Conditions}");
+
+                    if (current.FeelsLike.HasValue)
+                        response.AppendLine($"• Feels like: {current.FeelsLike:F1}{tempUnit}");
+
+                    if (current.Humidity.HasValue)
+                        response.AppendLine($"• Humidity: {current.Humidity:F0}%");
+
+                    if (current.WindSpeed.HasValue)
+                    {
+                        var windUnit = unitGroup == "metric" ? "km/h" : "mph";
+                        response.AppendLine($"• Wind: {current.WindSpeed:F1} {windUnit}");
+                    }
+
+                    response.AppendLine();
                 }
 
-                response.AppendLine();
-            }
-
-            // Today's forecast
-            if (weather.Days?.Length > 0)
-            {
-                var today = weather.Days[0];
-                response.AppendLine($"**Today's Forecast:**");
-                response.AppendLine($"• High: {today.TempMax:F1}{tempUnit} / Low: {today.TempMin:F1}{tempUnit}");
-                response.AppendLine($"• Conditions: {today.Conditions}");
-
-                if (!string.IsNullOrEmpty(today.Description))
-                    response.AppendLine($"• {today.Description}");
-
-                response.AppendLine();
-            }
-
-            // 3-day forecast
-            if (weather.Days?.Length > 1)
-            {
-                response.AppendLine($"**3-Day Forecast:**");
-                for (int i = 1; i < Math.Min(4, weather.Days.Length); i++)
+                // Today's forecast
+                if (weather.Days?.Length > 0)
                 {
-                    var day = weather.Days[i];
-                    var date = DateTime.Parse(day.DateTime).ToString("ddd, MMM d");
-                    response.AppendLine($"• {date}: {day.TempMax:F1}/{day.TempMin:F1}{tempUnit} - {day.Conditions}");
+                    var today = weather.Days[0];
+                    response.AppendLine($"**Today's Forecast:**");
+                    response.AppendLine($"• High: {today.TempMax:F1}{tempUnit} / Low: {today.TempMin:F1}{tempUnit}");
+                    response.AppendLine($"• Conditions: {today.Conditions}");
+
+                    if (!string.IsNullOrEmpty(today.Description))
+                        response.AppendLine($"• {today.Description}");
+
+                    response.AppendLine();
+                }
+
+                // 3-day forecast
+                if (weather.Days?.Length > 1)
+                {
+                    response.AppendLine($"**3-Day Forecast:**");
+                    for (int i = 1; i < Math.Min(4, weather.Days.Length); i++)
+                    {
+                        var day = weather.Days[i];
+                        var date = DateTime.Parse(day.DateTime).ToString("ddd, MMM d");
+                        response.AppendLine($"• {date}: {day.TempMax:F1}/{day.TempMin:F1}{tempUnit} - {day.Conditions}");
+                    }
+                }
+
+                // Weather alerts if any
+                if (weather.Alerts?.Length > 0)
+                {
+                    response.AppendLine();
+                    response.AppendLine($"⚠️ **Weather Alerts:**");
+                    foreach (var alert in weather.Alerts.Take(2)) // Limit to 2 alerts
+                    {
+                        response.AppendLine($"• {alert.Event}: {alert.Description}");
+                    }
                 }
             }
-
-            // Weather alerts if any
-            if (weather.Alerts?.Length > 0)
+            catch (Exception ex)
             {
-                response.AppendLine();
-                response.AppendLine($"⚠️ **Weather Alerts:**");
-                foreach (var alert in weather.Alerts.Take(2)) // Limit to 2 alerts
-                {
-                    response.AppendLine($"• {alert.Event}: {alert.Description}");
-                }
+                _logger.LogError("Error formatting weather response", weather);
             }
 
             return response.ToString();
