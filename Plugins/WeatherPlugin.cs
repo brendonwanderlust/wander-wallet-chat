@@ -1,18 +1,20 @@
-﻿using Microsoft.SemanticKernel;
-using System.ComponentModel;
-using System.Text.Json;
+﻿using System.ComponentModel;
 using System.Text;
+using System.Text.Json;
+using Microsoft.SemanticKernel;
 
 namespace wander_wallet_chat.Plugins
 {
     public class WeatherPlugin
     {
         private readonly HttpClient _httpClient;
+        private readonly ILogger<WeatherPlugin> _logger;
         private readonly string _apiKey;
         private readonly string _baseUrl = "https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline";
 
-        public WeatherPlugin(HttpClient httpClient)
+        public WeatherPlugin(HttpClient httpClient, ILogger<WeatherPlugin> logger)
         {
+            _logger = logger;
             _httpClient = httpClient;
             _apiKey = Environment.GetEnvironmentVariable("WEATHER_API_KEY")
                 ?? throw new InvalidOperationException("WEATHER_API_KEY environment variable is required");
@@ -26,6 +28,8 @@ namespace wander_wallet_chat.Plugins
         {
             try
             {
+                _logger.LogInformation("Weather function called for: {Location}", location);
+
                 // Validate and sanitize inputs
                 if (string.IsNullOrWhiteSpace(location))
                 {
@@ -47,6 +51,7 @@ namespace wander_wallet_chat.Plugins
 
                 if (!response.IsSuccessStatusCode)
                 {
+                    _logger.LogError( $"Weather call failed for {location}", $"Status code: {response.StatusCode}", $"Failure Reason: {response.ReasonPhrase}");
                     return $"Sorry, I couldn't get weather information for {location}. The weather service might be unavailable or the location wasn't found.";
                 }
 
@@ -55,22 +60,25 @@ namespace wander_wallet_chat.Plugins
 
                 if (weatherData == null)
                 {
+                    _logger.LogError($"Couldn't parse the weather data {location}", $"Content: {jsonContent}");
                     return $"Sorry, I couldn't parse the weather data for {location}.";
                 }
 
                 return FormatWeatherResponse(weatherData, unitGroup);
             }
-            catch (HttpRequestException)
+            catch (HttpRequestException ex)
             {
+                _logger.LogError(ex, "Error getting weather for {Location}", location);
                 return $"I'm having trouble connecting to the weather service right now. Please try again later.";
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
+                _logger.LogError(ex, "Error getting weather for {Location}", location);
                 return $"The weather request timed out. Please try again.";
             }
             catch (Exception ex)
-            {
-                // Log the exception in a real application
+            { 
+                _logger.LogError(ex, "Error getting weather for {Location}", location);
                 return $"Sorry, I encountered an error getting weather information for {location}.";
             }
         }

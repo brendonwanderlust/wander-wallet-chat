@@ -9,6 +9,7 @@ using wander_wallet_chat.Plugins;
 
 // Use regular CreateBuilder instead of CreateSlimBuilder
 var builder = WebApplication.CreateBuilder(args);
+builder.Logging.AddConsole();
 
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
 var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" };
@@ -18,15 +19,16 @@ var deploymentName = Environment.GetEnvironmentVariable("AzureOpenAIDeploymentNa
 
 // Register services
 builder.Services.AddSingleton<ConversationService>();
-builder.Services.AddSingleton<ChatService>();
+builder.Services.AddScoped<ChatService>();
 builder.Services.AddSingleton<ChatHandler>();
 
-// Register HttpClient for weather API calls
 builder.Services.AddHttpClient<WeatherPlugin>();
+builder.Services.AddTransient<WeatherPlugin>();
 
 // Create and configure the Semantic Kernel
 builder.Services.AddSingleton<Kernel>(serviceProvider =>
 {
+    var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
     var kernelBuilder = Kernel.CreateBuilder();
 
     // Add Azure OpenAI chat completion
@@ -40,9 +42,16 @@ builder.Services.AddSingleton<Kernel>(serviceProvider =>
     var kernel = kernelBuilder.Build();
 
     // Add the weather plugin
-    var httpClient = serviceProvider.GetRequiredService<HttpClient>();
-    var weatherPlugin = new WeatherPlugin(httpClient);
-    kernel.Plugins.AddFromObject(weatherPlugin, "WeatherPlugin");
+    try
+    {
+        var weatherPlugin = serviceProvider.GetRequiredService<WeatherPlugin>();
+        kernel.Plugins.AddFromObject(weatherPlugin, "WeatherPlugin");
+        logger.LogInformation("Weather plugin registered successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to register weather plugin");
+    }
 
     return kernel;
 });
