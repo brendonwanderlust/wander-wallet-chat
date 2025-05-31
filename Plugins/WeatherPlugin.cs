@@ -64,7 +64,7 @@ namespace wander_wallet_chat.Plugins
                     return $"Sorry, I couldn't parse the weather data for {location}.";
                 }
 
-                return FormatWeatherResponse(weatherData, unitGroup);
+                return FormatWeatherResponse(weatherData, unitGroup, _logger);
             }
             catch (HttpRequestException ex)
             {
@@ -83,8 +83,10 @@ namespace wander_wallet_chat.Plugins
             }
         }
 
-        private static string FormatWeatherResponse(WeatherApiResponse weather, string unitGroup)
+        private static string FormatWeatherResponse(WeatherApiResponse weather, string unitGroup, ILogger<WeatherPlugin> _logger)
         {
+            _logger.LogError("Entered FormatWeatherResponse method");
+
             var tempUnit = unitGroup == "metric" ? "°C" : "°F";
             var response = new StringBuilder();
 
