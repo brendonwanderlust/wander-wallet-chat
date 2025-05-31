@@ -61,7 +61,7 @@ namespace wander_wallet_chat.Plugins
                 _logger.LogError($"Content retrieval successful", jsonContent);
                 _logger.LogError($"Attempting Deserialization");
                 var weatherData = JsonSerializer.Deserialize<WeatherApiResponse>(jsonContent);
-                _logger.LogError($" Deserialization Successful: ", weatherData);
+                _logger.LogError($" Deserialization Successful: {weatherData}");
 
                 if (weatherData == null)
                 {
