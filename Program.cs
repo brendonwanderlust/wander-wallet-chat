@@ -123,6 +123,7 @@ public record ReplyResponse(string Reply);
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
 )]
 [JsonSerializable(typeof(ReplyResponse))]
+[JsonSerializable(typeof(ChatRequest))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
 
