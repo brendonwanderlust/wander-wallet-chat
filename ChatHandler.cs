@@ -20,15 +20,14 @@
             return await chatService.InvokePromptAsync(userId, message);
         }
 
-        public async IAsyncEnumerable<string> ChatStreaming(string userId, string message)
-        {
-            // Default to a generic user ID if none provided
-            if (string.IsNullOrEmpty(userId))
+        public async IAsyncEnumerable<string> ChatStreaming(ChatRequest request)
+        { 
+            if (string.IsNullOrEmpty(request.UserId))
             {
-                userId = "anonymous-user";
+                request.UserId = "anonymous-user";
             }
-
-            await foreach (var chunk in chatService.InvokePromptStreamingAsync(userId, message))
+             
+            await foreach (var chunk in chatService.InvokePromptStreamingAsync(request.UserId, request.Message, request))
             {
                 yield return chunk;
             }
