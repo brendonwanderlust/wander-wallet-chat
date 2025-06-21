@@ -1,47 +1,56 @@
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using DotNetEnv;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using wander_wallet_chat;
+using wander_wallet_chat.Middleware;
 using wander_wallet_chat.Plugins;
 
-// Use regular CreateBuilder instead of CreateSlimBuilder
 var builder = WebApplication.CreateBuilder(args);
-builder.Logging.AddConsole();
+ 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole(options =>
+{
+    options.FormatterName = "json";
+});
+builder.Logging.AddJsonConsole(options =>
+{
+    options.IncludeScopes = true;
+    options.TimestampFormat = "yyyy-MM-ddTHH:mm:ss.fffZ";
+    options.JsonWriterOptions = new JsonWriterOptions
+    {
+        Indented = false  
+    };
+});
 
 var allowedOrigins = new string[] { "https://localhost", "https://localhost:8100", "http://localhost:8100", "capacitor://localhost" };
 var headers = new string[] { "Access-Control-Allow-Origin", "Origin", "Content-Length", "Content-Type", "Authorization" };
 var endpoint = Environment.GetEnvironmentVariable("AzureOpenAIURL");
 var apiKey = Environment.GetEnvironmentVariable("AzureOpenAIKey");
 var deploymentName = Environment.GetEnvironmentVariable("AzureOpenAIDeploymentName");
-
-// Register services
+ 
 builder.Services.AddSingleton<ConversationService>();
-builder.Services.AddScoped<ChatService>();
+builder.Services.AddSingleton<ChatService>();
 builder.Services.AddSingleton<ChatHandler>();
 
 builder.Services.AddHttpClient<WeatherPlugin>();
 builder.Services.AddTransient<WeatherPlugin>();
-
-// Create and configure the Semantic Kernel
+ 
 builder.Services.AddSingleton<Kernel>(serviceProvider =>
 {
     var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
     var kernelBuilder = Kernel.CreateBuilder();
 
-    // Add Azure OpenAI chat completion
     kernelBuilder.AddAzureOpenAIChatCompletion(
         deploymentName: deploymentName!,
         endpoint: endpoint!,
         apiKey: apiKey!
     );
 
-    // Build the kernel
     var kernel = kernelBuilder.Build();
 
-    // Add the weather plugin
     try
     {
         var weatherPlugin = serviceProvider.GetRequiredService<WeatherPlugin>();
@@ -56,14 +65,12 @@ builder.Services.AddSingleton<Kernel>(serviceProvider =>
     return kernel;
 });
 
-// Register IChatCompletionService separately for backwards compatibility
 builder.Services.AddSingleton<IChatCompletionService>(serviceProvider =>
 {
     var kernel = serviceProvider.GetRequiredService<Kernel>();
     return kernel.GetRequiredService<IChatCompletionService>();
 });
 
-// Configure JSON serialization for regular reflection-based approach
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;
@@ -94,6 +101,8 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+ 
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 app.UseRouting();
 app.UseCors();
@@ -108,28 +117,43 @@ var chatApi = app.MapGroup("/chat");
 chatApi.MapPost("/stream", async (
     [FromBody] ChatRequest request,
     ChatHandler handler,
-    HttpContext context) =>
+    HttpContext context,
+    ILogger<Program> logger) =>
 {
+    using var scope = logger.BeginScope(new Dictionary<string, object>
+    {
+        ["UserId"] = request.UserId ?? "anonymous-user",
+        ["EndpointType"] = "streaming-chat",
+        ["RequestId"] = context.TraceIdentifier
+    });
+
+    logger.LogInformation("Starting chat stream request for user {UserId}", request.UserId ?? "anonymous-user");
+
     context.Response.Headers.Append("Content-Type", "text/event-stream");
     context.Response.Headers.Append("Cache-Control", "no-cache");
     context.Response.Headers.Append("Connection", "keep-alive");
 
     try
     {
+        var messageCount = 0;
         await foreach (var chunk in handler.ChatStreaming(request))
         {
             await context.Response.WriteAsync($"data: {chunk}\n\n");
             await context.Response.Body.FlushAsync();
+            messageCount++;
         }
 
         await context.Response.WriteAsync("event: complete\ndata: \n\n");
         await context.Response.Body.FlushAsync();
+
+        logger.LogInformation("Chat stream completed successfully. Chunks sent: {ChunkCount}", messageCount);
     }
     catch (Exception ex)
     {
+        logger.LogError(ex, "Error during chat stream for user {UserId}", request.UserId ?? "anonymous-user");
         await context.Response.WriteAsync($"event: error\ndata: {ex.Message}\n\n");
         await context.Response.Body.FlushAsync();
     }
 }).RequireCors("SSE");
-
+ 
 app.Run();

@@ -3,16 +3,19 @@ using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using wander_wallet_chat;
+using System.Diagnostics;
 
 public class ChatService
 {
     private readonly Kernel _kernel;
     private readonly ConversationService _conversationService;
+    private readonly ILogger<ChatService> _logger;
 
-    public ChatService(Kernel kernel, ConversationService conversationService)
+    public ChatService(Kernel kernel, ConversationService conversationService, ILogger<ChatService> logger)
     {
         _kernel = kernel;
         _conversationService = conversationService;
+        _logger = logger;
     }
 
     private ChatHistory BuildChatHistory(string userId, ChatRequest? request = null)
@@ -91,54 +94,81 @@ public class ChatService
 
     public async Task<string> InvokePromptAsync(string userId, string input, ChatRequest? request = null)
     {
-        // Track user message
-        _conversationService.AddMessage(userId, "user", input);
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation("Processing chat request for user {UserId} and input {Input}", userId, input);
 
-        var chatHistory = BuildChatHistory(userId, request);
-
-        // Configure execution settings to enable automatic function calling
-        var executionSettings = new OpenAIPromptExecutionSettings
+        try
         {
-            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-            Temperature = 0.7,
-            MaxTokens = 1000
-        };
+            // Track user message
+            _conversationService.AddMessage(userId, "user", input);
 
-        // Get the chat completion service from the kernel
-        var chatCompletion = _kernel.GetRequiredService<IChatCompletionService>();
+            var chatHistory = BuildChatHistory(userId, request);
 
-        // Ask SK to respond using full chat history with function calling enabled
-        var result = await chatCompletion.GetChatMessageContentAsync(
-            chatHistory,
-            executionSettings,
-            _kernel);
+            // Configure execution settings to enable automatic function calling
+            var executionSettings = new OpenAIPromptExecutionSettings
+            {
+                ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                Temperature = 0.7,
+                MaxTokens = 1000
+            };
 
-        // Track assistant reply
-        _conversationService.AddMessage(userId, "assistant", result.Content ?? "");
+            // Get the chat completion service from the kernel
+            var chatCompletion = _kernel.GetRequiredService<IChatCompletionService>();
 
-        return result.Content ?? "";
+            // Ask SK to respond using full chat history with function calling enabled
+            var result = await chatCompletion.GetChatMessageContentAsync(
+                chatHistory,
+                executionSettings,
+                _kernel);
+
+            // Track assistant reply
+            _conversationService.AddMessage(userId, "assistant", result.Content ?? "");
+
+            stopwatch.Stop();
+            _logger.LogInformation("Chat request completed for user {UserId} in {ElapsedMs}ms", userId, stopwatch.ElapsedMilliseconds);
+
+            return result.Content ?? "";
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex, "Error processing chat request for user {UserId} after {ElapsedMs}ms", userId, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
     }
 
     public async IAsyncEnumerable<string> InvokePromptStreamingAsync(string userId, string input, ChatRequest? request = null)
     {
-        _conversationService.AddMessage(userId, "user", input);
-
-        var chatHistory = BuildChatHistory(userId, request);
-
-        // Configure execution settings for streaming with function calling
-        var executionSettings = new OpenAIPromptExecutionSettings
+        var stopwatch = Stopwatch.StartNew();
+        _logger.LogInformation("Starting streaming chat for user {UserId}", userId);
+         
+        IAsyncEnumerable<StreamingChatMessageContent> response;
+        try
         {
-            ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
-            Temperature = 0.7,
-            MaxTokens = 1000
-        };
+            _conversationService.AddMessage(userId, "user", input);
 
-        var chatCompletion = _kernel.GetRequiredService<IChatCompletionService>();
-        var response = chatCompletion.GetStreamingChatMessageContentsAsync(
-            chatHistory,
-            executionSettings,
-            _kernel);
+            var chatHistory = BuildChatHistory(userId, request);
+             
+            var executionSettings = new OpenAIPromptExecutionSettings
+            {
+                ToolCallBehavior = ToolCallBehavior.AutoInvokeKernelFunctions,
+                Temperature = 0.7,
+                MaxTokens = 1000
+            };
 
+            var chatCompletion = _kernel.GetRequiredService<IChatCompletionService>();
+            response = chatCompletion.GetStreamingChatMessageContentsAsync(
+                chatHistory,
+                executionSettings,
+                _kernel);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogError(ex, "Error setting up streaming chat for user {UserId} after {ElapsedMs}ms", userId, stopwatch.ElapsedMilliseconds);
+            throw;
+        }
+         
         var assistantReply = new StringBuilder();
 
         await foreach (var chunk in response)
@@ -149,11 +179,12 @@ public class ChatService
                 yield return chunk.Content;
             }
         }
-
+         
+        stopwatch.Stop();
         _conversationService.AddMessage(userId, "assistant", assistantReply.ToString());
+        _logger.LogInformation("Streaming chat completed for user {UserId} in {ElapsedMs}ms", userId, stopwatch.ElapsedMilliseconds);
     }
-
-    // Overloaded methods for backward compatibility
+     
     public async Task<string> InvokePromptAsync(string userId, string input)
     {
         return await InvokePromptAsync(userId, input, null);
